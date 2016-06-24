@@ -11,7 +11,8 @@
 Script: twinomeSharePointOnlineFunctions.ps1
 Author: Matt Warburton
 Date: 24/06/16
-Comments: SharePoint functions
+Comments: SharePoint Online functions
+Requires: SharePOint Online & Office Dev PnP PowerShell cmdlets 
 #>
 
 Function ApprovedVerb-TWPATTERNErrorHandle {
@@ -75,42 +76,52 @@ Function ApprovedVerb-TWPATTERNErrorHandle {
     }
 } 
 
+Function Set-DefaultView {
+    <#
+    .SYNOPSIS
+        Blah
+    .DESCRIPTION
+        TEMPLATE
+    .PARAMETER 1
+        Blah
+    .PARAMETER 2
+        Blah
+    .EXAMPLE
+        Set-DefaultView -site "a tenent site collection" -web "a web" -list "Documents" -view "All Documents"
+    #>
+    [CmdletBinding()] 
+    param (
+        [string]$site,
+        [string]$web,  
+        [string]$list, 
+        [string]$view
+    )
+      
+    BEGIN {
 
-$module = Get-Module | Where-Object {$_.name -eq "Microsoft.Online.SharePoint.PowerShell"}
-
-if(!$module){
-    Import-Module Microsoft.Online.SharePoint.PowerShell -WarningAction SilentlyContinue
-}
-
-###Standard###
-
-$cred = Get-Credential
-Connect-SPOService -Url https://twinome-admin.sharepoint.com -Credential $cred
-
-<#
-
-PnP
-
-mwarburton@twinome.com
-
-help *spo*
-
-#>
-
-Connect-SPOnline -Url https://twinome.sharepoint.com -Credentials O365TeamSite
-$ctx = Get-SPOContext
-
-$webs = Get-SPOSubWebs
-
-$webs | ForEach-Object{
-    $ctx.Load($_.lists)
-    $ctx.ExecuteQuery()
-    $lists = $_.lists
-
-    $lists | ForEach-Object{
-        $ctx.Load($_.views)
-        $ctx.ExecuteQuery()
-        $views = $_.views | Where-Object {$_.DefaultView -eq $true}
-        Write-Output $views
+        $ErrorActionPreference = 'Stop'    
     }
-}
+    
+    PROCESS {
+
+        try{
+            Connect-SPOnline -Url $site -Credentials O365TeamSite
+            $ctx = Get-SPOContext
+            $wb = Get-SPOWeb -Identity $web
+            $ctx.Load($wb.lists)
+            $ctx.ExecuteQuery()
+            $lst = $wb.lists | Where-Object {$_.Title -eq $list}
+            $ctx.Load($lst.views)
+            $ctx.ExecuteQuery()
+            $vw = $lst.views | Where-Object {$_.Title -eq $view}
+            $vw.defaultview = $true
+            $vw.update()
+            $ctx.ExecuteQuery()                 
+        }
+
+        catch{
+            $error = $_
+            Write-Output "$($error.Exception.Message) - Line Number: $($error.InvocationInfo.ScriptLineNumber)"  
+        }
+    }
+} 
